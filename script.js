@@ -19,10 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultSection = document.getElementById('result-section');
     const resultVideo = document.getElementById('result-video');
     const downloadButton = document.getElementById('download-button');
-    
-    // API Keys - 替换成您的实际API密钥
-    const ELEVENLABS_API_KEY = 'sk_317aed3fe6fedcc24dbd0eae70f76772977947c830cfe2cc';
-    const DID_API_KEY = 'Y2FuZHNldmVuMjAxNUBnbWFpbC5jb20:QnYUpcYj03bFmFjGawzUE';
+ 
     
     // Global variables
     let mediaRecorder;
@@ -186,7 +183,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // API functions
     async function cloneVoice(audioBlob) {
         console.log('Starting voice cloning...');
         
@@ -196,12 +192,23 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('description', 'Voice cloned from user upload');
         
         try {
-            const response = await fetch('https://cors-anywhere.herokuapp.com/https://api.elevenlabs.io/v1/voices/add', {
+            // 将音频文件转换为base64编码
+            const base64Audio = await blobToBase64(audioBlob);
+            
+            const response = await fetch('/api/elevenlabs', {
                 method: 'POST',
                 headers: {
-                    'xi-api-key': ELEVENLABS_API_KEY,
+                    'Content-Type': 'application/json',
                 },
-                body: formData
+                body: JSON.stringify({
+                    url: 'voices/add',
+                    method: 'POST',
+                    body: {
+                        name: 'User Voice',
+                        files: [base64Audio],
+                        description: 'Voice cloned from user upload'
+                    }
+                })
             });
             
             if (!response.ok) {
@@ -217,23 +224,40 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // 辅助函数：将Blob转换为base64
+    function blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64String = reader.result.split(',')[1];
+                resolve(base64String);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+    
     async function generateSpeech(text, voiceId) {
         console.log('Generating speech for text:', text);
         console.log('Using voice ID:', voiceId);
         
         try {
-            const response = await fetch(`https://cors-anywhere.herokuapp.com/https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+            const response = await fetch('/api/elevenlabs', {
                 method: 'POST',
                 headers: {
-                    'xi-api-key': ELEVENLABS_API_KEY,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    text: text,
-                    model_id: 'eleven_monolingual_v1',
-                    voice_settings: {
-                        stability: 0.5,
-                        similarity_boost: 0.75
+                    url: 'text-to-speech',
+                    method: 'POST',
+                    voiceId: voiceId,
+                    body: {
+                        text: text,
+                        model_id: 'eleven_monolingual_v1',
+                        voice_settings: {
+                            stability: 0.5,
+                            similarity_boost: 0.75
+                        }
                     }
                 })
             });
@@ -255,16 +279,22 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Starting video generation...');
         
         try {
-            // First, upload the photo to get a photo URL
-            const photoFormData = new FormData();
-            photoFormData.append('image', photoBlob);
+            // 将照片转换为base64编码
+            const base64Photo = await blobToBase64(photoBlob);
             
-            const photoResponse = await fetch('https://cors-anywhere.herokuapp.com/https://api.d-id.com/images', {
+            // 上传照片
+            const photoResponse = await fetch('/api/did', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Basic ${DID_API_KEY}`,
+                    'Content-Type': 'application/json',
                 },
-                body: photoFormData
+                body: JSON.stringify({
+                    url: 'images',
+                    method: 'POST',
+                    body: {
+                        image: base64Photo
+                    }
+                })
             });
             
             if (!photoResponse.ok) {
@@ -276,23 +306,26 @@ document.addEventListener('DOMContentLoaded', function() {
             const photoUrl = photoData.url;
             console.log('Photo uploaded successfully:', photoUrl);
             
-            // Now create the talking avatar video
-            const videoResponse = await fetch('https://cors-anywhere.herokuapp.com/https://api.d-id.com/talks', {
+            // 创建视频
+            const videoResponse = await fetch('/api/did', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Basic ${DID_API_KEY}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    script: {
-                        type: 'audio',
-                        audio_url: audioURL,
-                        ssml: false
-                    },
-                    source_url: photoUrl,
-                    config: {
-                        fluent: true,
-                        pad_audio: 0.3
+                    url: 'talks',
+                    method: 'POST',
+                    body: {
+                        script: {
+                            type: 'audio',
+                            audio_url: audioURL,
+                            ssml: false
+                        },
+                        source_url: photoUrl,
+                        config: {
+                            fluent: true,
+                            pad_audio: 0.3
+                        }
                     }
                 })
             });
@@ -306,7 +339,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const talkId = videoData.id;
             console.log('Video generation started, talk ID:', talkId);
             
-            // Poll for the status of the video generation
+            // 轮询视频生成状态
             return await pollForVideoCompletion(talkId);
         } catch (error) {
             console.error('Video generation error:', error);
@@ -321,15 +354,19 @@ document.addEventListener('DOMContentLoaded', function() {
         let attempts = 0;
         
         while (attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+            await new Promise(resolve => setTimeout(resolve, 2000)); // 等待2秒
             console.log(`Checking video status, attempt ${attempts + 1}/${maxAttempts}`);
             
             try {
-                const statusResponse = await fetch(`https://cors-anywhere.herokuapp.com/https://api.d-id.com/talks/${talkId}`, {
-                    method: 'GET',
+                const statusResponse = await fetch('/api/did', {
+                    method: 'POST',
                     headers: {
-                        'Authorization': `Basic ${DID_API_KEY}`,
-                    }
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        url: `talks/${talkId}`,
+                        method: 'GET'
+                    })
                 });
                 
                 if (!statusResponse.ok) {
