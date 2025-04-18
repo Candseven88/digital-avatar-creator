@@ -268,7 +268,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             const audioBlob = await response.blob();
-            return URL.createObjectURL(audioBlob);
+            // 新增上传接口
+const audioUploadUrl = await uploadAudioToVercel(audioBlob);
+return audioUploadUrl;
         } catch (error) {
             console.error('Speech generation error:', error);
             throw error;
@@ -392,4 +394,21 @@ document.addEventListener('DOMContentLoaded', function() {
         
         throw new Error('Video generation timed out');
     }
+    async function uploadAudioToVercel(blob) {
+        const formData = new FormData();
+        formData.append("file", blob, "audio.mp3");
+      
+        const response = await fetch("https://file.io", {
+          method: "POST",
+          body: formData
+        });
+      
+        const result = await response.json();
+        if (result.success) {
+          return result.link; // 返回可以公开访问的远程音频地址
+        } else {
+          throw new Error("Audio upload failed");
+        }
+      }
+
 });
