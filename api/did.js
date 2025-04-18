@@ -5,9 +5,9 @@ export default async function handler(req, res) {
       const response = await fetch(`https://api.d-id.com/${url}`, {
         method: method || 'POST',
         headers: {
-          'Authorization': `Basic ${process.env.DID_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
+            'Authorization': `Bearer ${process.env.DID_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
         body: body ? JSON.stringify(body) : undefined,
       });
       
