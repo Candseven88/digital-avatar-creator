@@ -398,17 +398,17 @@ return audioUploadUrl;
         const formData = new FormData();
         formData.append("file", blob, "audio.mp3");
       
-        const response = await fetch("https://file.io", {
+        const response = await fetch("/api/upload-audio", {
           method: "POST",
           body: formData
         });
       
         const result = await response.json();
-        if (result.success) {
-          return result.link; // 返回可以公开访问的远程音频地址
-        } else {
-          throw new Error("Audio upload failed");
+        if (!result.url) {
+          throw new Error("Audio upload failed: No URL returned");
         }
+      
+        return result.url; // 👈 这就是我们传给 D-ID 的 audio URL
       }
 
 });
