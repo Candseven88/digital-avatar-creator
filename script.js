@@ -21,8 +21,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const downloadButton = document.getElementById('download-button');
     
     // API Keys - 替换成您的实际API密钥
-    const ELEVENLABS_API_KEY = 'sk_4e74cff477885d28e83164f5e6aedb5e27801ae5c2660b8a';
-    const DID_API_KEY = 'Y2FuZHNldmVuMjAxNUBnbWFpbC5jb20:tmvZxUGbVtBr9mUBYBiYp';
+    const ELEVENLABS_API_KEY = 'sk_317aed3fe6fedcc24dbd0eae70f76772977947c830cfe2cc';
+    const DID_API_KEY = 'Y2FuZHNldmVuMjAxNUBnbWFpbC5jb20:QnYUpcYj03bFmFjGawzUE';
     
     // Global variables
     let mediaRecorder;
